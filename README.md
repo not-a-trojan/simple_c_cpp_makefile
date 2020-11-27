@@ -24,5 +24,9 @@ The default options should be perfectly fine for most small projects though.
 
 
 ## Changelog
+### 27.11.2020
+* Added the option to set the debug and release build directories to the same directory.\
+In that case, the output binaries are suffixed with "_debug" and "_release".
+
 ### 25.11.2020
 * Initial release

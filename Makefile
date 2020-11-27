@@ -21,9 +21,10 @@ INC_DIR = include
 # Source directory with the .c and .cpp files
 SRC_DIR = src
 
-# Output directories
-RELEASE_DIR = build-release
-DEBUG_DIR = build-debug
+# Output directories for release and debug configurations
+# If both point to the same directory, the final binaries will be suffixed with "_release" and "_debug"
+RELEASE_DIR = build
+DEBUG_DIR = build
 
 # Compiler/Linker options
 C_RELEASE_FLAGS   = -Wall -Wextra -pedantic -O3 -fomit-frame-pointer -std=c11
@@ -50,12 +51,31 @@ OUTPUT = program
 
 HELP_MESSAGE = Simply use any combination of 'make {debug, release, help, clean}'. Just calling 'make' will build release and debug. By adding 'V=1' prints more verbose output.
 
+# switch between debug and release config
+ifeq ($(D),1)
+	C_FLAGS = $(C_DEBUG_FLAGS)
+	CXX_FLAGS = $(CXX_DEBUG_FLAGS)
+	LINK_FLAGS = $(DEBUG_LINK_FLAGS)
+	OBJ_DIR = obj_debug
+ifeq ($(DEBUG_DIR),$(RELEASE_DIR))
+	OUTPUT := $(basename $(OUTPUT))_debug$(suffix $(OUTPUT))
+endif
+else
+	C_FLAGS = $(C_RELEASE_FLAGS)
+	CXX_FLAGS = $(CXX_RELEASE_FLAGS)
+	LINK_FLAGS = $(RELEASE_LINK_FLAGS)
+	OBJ_DIR = obj_release
+ifeq ($(DEBUG_DIR),$(RELEASE_DIR))
+	OUTPUT := $(basename $(OUTPUT))_release$(suffix $(OUTPUT))
+endif
+endif
+
 # list all .c and .cpp files
 C_LIST := $(shell find $(SRC_DIR) -name "*.c")
 CXX_LIST := $(shell find $(SRC_DIR) -name "*.cpp")
 
 # create object file names in the obj directory
-OBJ_FILES := $(patsubst $(SRC_DIR)/%,$(OUTPUT_DIRECTORY)/obj/%, $(C_LIST:.c=.o)) $(patsubst $(SRC_DIR)/%,$(OUTPUT_DIRECTORY)/obj/%, $(CXX_LIST:.cpp=.o))
+OBJ_FILES := $(patsubst $(SRC_DIR)/%,$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%, $(C_LIST:.c=.o)) $(patsubst $(SRC_DIR)/%,$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%, $(CXX_LIST:.cpp=.o))
 
 # Verbosity flag defaults to 0
 V = 0
@@ -66,19 +86,8 @@ ifeq ($(V),0)
 	PIPE := > /dev/null
 endif
 
-# if the debug flag is set, append debug options
-ifeq ($(D),1)
-	C_FLAGS = $(C_DEBUG_FLAGS)
-	CXX_FLAGS = $(CXX_DEBUG_FLAGS)
-	LINK_FLAGS = $(DEBUG_LINK_FLAGS)
-else
-	C_FLAGS = $(C_RELEASE_FLAGS)
-	CXX_FLAGS = $(CXX_RELEASE_FLAGS)
-	LINK_FLAGS = $(RELEASE_LINK_FLAGS)
-endif
-
 # clang/gcc options to generate dependency files
-DEP_FLAGS = -MT $@ -MMD -MP -MF $(OUTPUT_DIRECTORY)/obj/$*.d
+DEP_FLAGS = -MT $@ -MMD -MP -MF $(OUTPUT_DIRECTORY)/$(OBJ_DIR)/$*.d
 
 # select appropriate linker
 ifeq ($(CXX_LIST),)
@@ -141,7 +150,7 @@ ifeq ($(D), 1)
 else
 	@echo  '______Building Release______'
 endif
-	@mkdir -p $(OUTPUT_DIRECTORY)/obj/
+	@mkdir -p $(OUTPUT_DIRECTORY)/$(OBJ_DIR)/
 
 # link output
 $(OUTPUT_DIRECTORY)/$(OUTPUT): $(OBJ_FILES)
@@ -153,7 +162,7 @@ endif
 	@echo
 
 # compile code files
-$(OUTPUT_DIRECTORY)/obj/%.o: $(SRC_DIR)/%.c Makefile
+$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c Makefile
 ifeq ($(V), 0)
 	@echo  -e 'CC\t$(notdir $<)'
 endif
@@ -161,7 +170,7 @@ endif
 	$(SUPPRESS_CMD)$(CC) -c $< -o $@ $(PIPE) $(DEP_FLAGS) $(C_FLAGS) -I $(INC_DIR)
 	@touch $@
 
-$(OUTPUT_DIRECTORY)/obj/%.o: $(SRC_DIR)/%.cpp Makefile
+$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp Makefile
 ifeq ($(V), 0)
 	@echo  -e 'CXX\t$(notdir $<)'
 endif
