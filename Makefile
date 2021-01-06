@@ -15,24 +15,25 @@
 ##                CONFIGURATION                 ##
 ##################################################
 
-# Include directory with the .h files
-INC_DIR = include
+# Include directories with .h files. Separate multiple directories with a space.
+INC_DIRS = include
 
-# Source directory with the .c and .cpp files
-SRC_DIR = src
+# Source directories with the .c and .cpp files. Separate multiple directories with a space.
+SRC_DIRS = src
 
-# Output directories for release and debug configurations
-# If both point to the same directory, the final binaries will be suffixed with "_release" and "_debug"
+# Output directories for release and debug configurations.
+# If both point to the same directory, the final binaries will be suffixed with "_release" and "_debug".
 RELEASE_DIR = build
 DEBUG_DIR = build
 
-# Compiler/Linker options
-C_RELEASE_FLAGS   = -Wall -Wextra -pedantic -O3 -fomit-frame-pointer -std=c11
-C_DEBUG_FLAGS     = -Wall -Wextra -pedantic -g3 -Og -fsanitize=address -std=c11
+# Compiler options
+C_RELEASE_FLAGS   = -Wall -Wextra -Wshadow -pedantic -O3 -fomit-frame-pointer -std=c11
+C_DEBUG_FLAGS     = -Wall -Wextra -Wshadow -pedantic -g3 -Og -fsanitize=address -std=c11
 
-CXX_RELEASE_FLAGS = -Wall -Wextra -pedantic -O3 -fomit-frame-pointer -std=c++17
-CXX_DEBUG_FLAGS   = -Wall -Wextra -pedantic -g3 -Og -fsanitize=address -std=c++17
+CXX_RELEASE_FLAGS = -Wall -Wextra -Wshadow -pedantic -O3 -fomit-frame-pointer -std=c++17
+CXX_DEBUG_FLAGS   = -Wall -Wextra -Wshadow -pedantic -g3 -Og -fsanitize=address -std=c++17
 
+# Linker options. Add libraries you want to link against here.
 RELEASE_LINK_FLAGS =
 DEBUG_LINK_FLAGS = -fsanitize=address
 
@@ -71,11 +72,11 @@ endif
 endif
 
 # list all .c and .cpp files
-C_LIST := $(shell find $(SRC_DIR) -name "*.c")
-CXX_LIST := $(shell find $(SRC_DIR) -name "*.cpp")
+C_LIST := $(foreach dir,$(SRC_DIRS),$(patsubst $(dir)/%,$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/$(dir)/%,$(shell find $(dir) -name "*.c")))
+CXX_LIST := $(foreach dir,$(SRC_DIRS),$(patsubst $(dir)/%,$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/$(dir)/%,$(shell find $(dir) -name "*.cpp")))
 
 # create object file names in the obj directory
-OBJ_FILES := $(patsubst $(SRC_DIR)/%,$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%, $(C_LIST:.c=.o)) $(patsubst $(SRC_DIR)/%,$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%, $(CXX_LIST:.cpp=.o))
+OBJ_FILES := $(C_LIST:.c=.o) $(CXX_LIST:.cpp=.o)
 
 # Verbosity flag defaults to 0
 V = 0
@@ -158,24 +159,24 @@ $(OUTPUT_DIRECTORY)/$(OUTPUT): $(OBJ_FILES)
 ifeq ($(V), 0)
 	@echo  -e 'LINK\t$(OUTPUT)'
 endif
-	$(SUPPRESS_CMD)$(LINK) -o $(OUTPUT_DIRECTORY)/$(OUTPUT) $(OBJ_FILES) -I $(INC_DIR) $(LINK_FLAGS) $(PIPE)
+	$(SUPPRESS_CMD)$(LINK) -o $(OUTPUT_DIRECTORY)/$(OUTPUT) $(OBJ_FILES) $(LINK_FLAGS) $(PIPE)
 	@echo
 
 # compile code files
-$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c Makefile
+$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: %.c Makefile
 ifeq ($(V), 0)
-	@echo  -e 'CC\t$(notdir $<)'
+	@echo  -e 'CC\t$<'
 endif
 	@mkdir -p '$(dir $@)'
-	$(SUPPRESS_CMD)$(CC) -c $< -o $@ $(PIPE) $(DEP_FLAGS) $(C_FLAGS) -I $(INC_DIR)
+	$(SUPPRESS_CMD)$(CC) -c $< -o $@ $(DEP_FLAGS) $(C_FLAGS) $(foreach dir,$(INC_DIRS),-I $(dir)) $(PIPE)
 	@touch $@
 
-$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp Makefile
+$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: %.cpp Makefile
 ifeq ($(V), 0)
-	@echo  -e 'CXX\t$(notdir $<)'
+	@echo  -e 'CXX\t$<'
 endif
 	@mkdir -p '$(dir $@)'
-	$(SUPPRESS_CMD)$(CXX) -c $< -o $@ $(PIPE) $(DEP_FLAGS) $(CXX_FLAGS) -I $(INC_DIR)
+	$(SUPPRESS_CMD)$(CXX) -c $< -o $@ $(DEP_FLAGS) $(CXX_FLAGS) $(foreach dir,$(INC_DIRS),-I $(dir)) $(PIPE)
 	@touch $@
 
 #Pull in dependency info for *existing* .o files

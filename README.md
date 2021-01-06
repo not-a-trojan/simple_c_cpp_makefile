@@ -8,8 +8,8 @@ Well, look no further! This plug-n-play Makefile is perfect for you!
 
 ## Setup
 1. Copy the makefile to your project's base directory
-2. Place all your source files in a folder `src` (directory name is also configurable in the makefile)
-3. Place all your header files in a folder `include` (directory name is also configurable in the makefile)
+2. Place all your source files in a folder `src` (configurable in the makefile)
+3. Place all your header files in a folder `include` (configurable in the makefile)
 4. Run `make`
 
 As simple as it should be :)
@@ -24,6 +24,13 @@ The default options should be perfectly fine for most small projects though.
 
 
 ## Changelog
+### 06.01.2021
+* Added support for multiple include and source directories (simply list them separated by space)
+* Non-verbose mode now prints full relative paths
+* Fixed bug that resulted in different behavior when switching from non-verbose to verbose mode (V=0 --> V=1)
+* Added `-Wshadow` to default flags
+* Improved documentation
+
 ### 27.11.2020
 * Added the option to set the debug and release build directories to the same directory.\
 In that case, the output binaries are suffixed with "_debug" and "_release".
