@@ -1,15 +1,21 @@
 # Simple [`Makefile`](Makefile) for your C and C++ Projects
 1. Copy the makefile to your project's base directory
-2. Configure `INC_DIRS` and `SRC_DIRS` in the makefile
+2. Adjust the "GLOBAL CONFIGURATION" section in the makefile
 3. Run `make`
 
 As simple as it should be :)
 
-These 3 steps will provide you with a fully optimized release build and a separate debug-optimized debug build with address sanitizers (by default).
-
-The [`Makefile`](Makefile) comes with a dedicated configuration section, but the default options should be perfectly fine for most small projects.
+The [`Makefile`](Makefile) comes with two premade build configurations, `debug` and `release`.
+It supports adding arbitrary additional configurations in the "BUILD CONFIGURATIONS" section.
+Simply run `make <config name>` to build the respective config.
+Add `V=1` to run in verbose mode.
 
 <details><summary> Changelog </summary>
+
+### v2.0:
+* Added support for arbitrary build configurations
+* Added option to configure source file extensions
+* Updated premade configurations
 
 ### v1.3:
 * Added option for autorun after build

@@ -1,109 +1,98 @@
-########################################################
-##                                                    ##
-##       Simple Universal C/C++ Makefile v1.3         ##
-##                                                    ##
-##   Targets:                                         ##
-##   help      show usage information                 ##
-##   all       build 'debug' and 'release'            ##
-##   re        force rebuild 'debug' and 'release'    ##
-##   release   build in release mode                  ##
-##   debug     build in debug mode                    ##
-##   clean     remove output directories              ##
-##                                                    ##
-########################################################
+##################################################
+##                                              ##
+##      Simple Universal C/C++ Makefile v2.0    ##
+##                                              ##
+##################################################
 
-########################################################
-##                   CONFIGURATION                    ##
-########################################################
+##################################################
+##            GLOBAL CONFIGURATION              ##
+##################################################
 
-# Include directories with .h files. Separate multiple directories with a space.
-INC_DIRS = include
-
-# Source directories with the .c and .cpp files. Separate multiple directories with a space.
+# Source directories with the .c and .cpp files. Separate multiple directories by space.
 SRC_DIRS = src
 
-# Output file name. If undefined/empty, output binaries are named 'debug' and 'release'.
-# OUTPUT = my_executable
+# Include directories with header files. Separate multiple directories by space.
+INC_DIRS = $(SRC_DIRS)
 
-# Output directories for release and debug configurations.
-# If both point to the same directory and OUTPUT is specified, the final binaries will be suffixed with "_release" and "_debug".
-DEBUG_DIR = build
-RELEASE_DIR = build
+# Build output directory
+OUTPUT_DIRECTORY = build
 
-# Compiler options
-C_DEBUG_FLAGS     = -Wall -Wextra -Wshadow -pedantic -g3 -Og -fsanitize=address -std=c11
-C_RELEASE_FLAGS   = -Wall -Wextra -Wshadow -pedantic -O3 -fomit-frame-pointer -std=c11
+# C compiler configuration
+C_EXTENSION = c
+CC  = clang
 
-CXX_DEBUG_FLAGS   = -Wall -Wextra -Wshadow -pedantic -g3 -Og -fsanitize=address -std=c++17
-CXX_RELEASE_FLAGS = -Wall -Wextra -Wshadow -pedantic -O3 -fomit-frame-pointer -std=c++17
+# C++ compiler configuration
+CXX_EXTENSION = cpp
+CXX = clang++
 
-# Linker options. Add libraries you want to link against here.
-DEBUG_LINK_FLAGS = -fsanitize=address
-RELEASE_LINK_FLAGS =
+##################################################
+##            BUILD CONFIGURATIONS              ##
+#                                                #
+# Adding a configuration is simple:              #
+# 1. decide on a config name, e.g., XX           #
+# 2. setup variables prefixed with the config    #
+#   XX_EXECUTABLE: name of the binary            #
+#   XX_C_FLAGS: flags for the C compiler         #
+#   XX_CXX_FLAGS: flags for the C++ compiler     #
+#   XX_LINK_FLAGS: flags for the linker          #
+# 3. (optional) create a shorthand make target   #
+#   xx:                                          #
+#   	@+make compile BUILD_TYPE=XX             #
+#   	@$(OUTPUT_DIRECTORY)/$(XX_EXECUTABLE)    #
+##################################################
 
-# Compilers
-# CC  = clang
-# CXX = clang++
+DEBUG_EXECUTABLE   = debug
+DEBUG_COMMON_FLAGS = -Wall -Wextra -Wshadow -pedantic -g3 -O0 -fsanitize=address,undefined -fno-sanitize-recover=all
+DEBUG_C_FLAGS      = $(DEBUG_COMMON_FLAGS) -std=c11
+DEBUG_CXX_FLAGS    = $(DEBUG_COMMON_FLAGS) -std=c++20
+DEBUG_LINK_FLAGS   = -fsanitize=address,undefined -fno-sanitize-recover=all
+debug:
+	@+make compile BUILD_TYPE=DEBUG
+	@$(OUTPUT_DIRECTORY)/$(DEBUG_EXECUTABLE)
 
-# Autorun. If defined, run binaries after building.
-RUN_AFTER_BUILD = 1
 
-# Verbose mode. If V is defined, make prints commands and options before execution.
-# V = 1
+RELEASE_EXECUTABLE   = release
+RELEASE_COMMON_FLAGS = -Wall -Wextra -Wshadow -pedantic -O3 -fomit-frame-pointer
+RELEASE_C_FLAGS      = $(RELEASE_COMMON_FLAGS) -std=c11
+RELEASE_CXX_FLAGS    = $(RELEASE_COMMON_FLAGS) -std=c++20
+RELEASE_LINK_FLAGS   =
+release:
+	@+make compile BUILD_TYPE=RELEASE
+	@$(OUTPUT_DIRECTORY)/$(RELEASE_EXECUTABLE)
 
-#############################################
-##          CORE (do not touch)            ##
-#############################################
 
-.PHONY: all re release debug clean help compile print_start
+##################################################
+##            CORE (do not touch)               ##
+##################################################
 
-HELP_MESSAGE = "Simply use any combination of 'make {debug, release, re, help, clean}'.\n" \
-               "Plain 'make' is equivalent to 'make debug release', i.e., build both configurations.\n" \
-               "'make re' is equivalent to 'make clean debug release', i.e., forces a rebuild.\n" \
-			   "If 'RUN_AFTER_BUILD' is not empty, each binary built is also executed.\n" \
-			   "By adding 'V=1' every executed command is printed."
+EXECUTABLE = $($(BUILD_TYPE)_EXECUTABLE)
+C_FLAGS = $($(BUILD_TYPE)_C_FLAGS)
+CXX_FLAGS = $($(BUILD_TYPE)_CXX_FLAGS)
+LINK_FLAGS = $($(BUILD_TYPE)_LINK_FLAGS)
+OBJ_DIR = obj_$(EXECUTABLE)
 
-ifeq ($(OUTPUT),)
-	DEBUG_OUTPUT := debug
-else
-ifeq ($(RELEASE_DIR), $(DEBUG_DIR))
-	DEBUG_OUTPUT := $(basename $(OUTPUT))_debug$(suffix $(OUTPUT))
-endif
-endif
-ifeq ($(OUTPUT),)
-	RELEASE_OUTPUT := release
-else
-ifeq ($(RELEASE_DIR), $(DEBUG_DIR))
-	RELEASE_OUTPUT := $(basename $(OUTPUT))_release$(suffix $(OUTPUT))
-endif
-endif
+# Helper functions to find all files
+keep_files = $(foreach x,$(1),$(if $(wildcard $(x)/.),,$(x)))
+find_files = $(call keep_files,$(wildcard $(1)/*)) $(foreach dir,$(wildcard $(1)/*/.),$(call find_files,$(dir:/.=)))
 
-# switch between debug and release config
-ifeq ($(D),1)
-	C_FLAGS = $(C_DEBUG_FLAGS)
-	CXX_FLAGS = $(CXX_DEBUG_FLAGS)
-	LINK_FLAGS = $(DEBUG_LINK_FLAGS)
-	OBJ_DIR = obj_debug
-else
-	C_FLAGS = $(C_RELEASE_FLAGS)
-	CXX_FLAGS = $(CXX_RELEASE_FLAGS)
-	LINK_FLAGS = $(RELEASE_LINK_FLAGS)
-	OBJ_DIR = obj_release
-endif
+# Map existing files into output directory...
+FILE_LIST := $(foreach dir,$(SRC_DIRS),$(patsubst $(dir)/%,$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/$(dir)/%,$(call find_files,$(dir))))
+# ...split into C and CXX files...
+C_LIST := $(filter %.$(C_EXTENSION),$(FILE_LIST))
+CXX_LIST := $(filter %.$(CXX_EXTENSION),$(FILE_LIST))
+# ...and obtain final object file list
+OBJ_FILES := $(C_LIST:.$(C_EXTENSION)=.o) $(CXX_LIST:.$(CXX_EXTENSION)=.o)
 
-# list all .c and .cpp files
-C_LIST := $(foreach dir,$(SRC_DIRS),$(patsubst $(dir)/%,$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/$(dir)/%,$(shell find $(dir) -name "*.c")))
-CXX_LIST := $(foreach dir,$(SRC_DIRS),$(patsubst $(dir)/%,$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/$(dir)/%,$(shell find $(dir) -name "*.cpp")))
+# Verbosity flag defaults to 0
+V = 0
 
-# create object file names in the obj directory
-OBJ_FILES := $(C_LIST:.c=.o) $(CXX_LIST:.cpp=.o)
-
-# if verbosity is set to 'empty', supress command printing
-ifndef V
+# if verbosity is set to 0, pipe outputs to null and supress command printing
+ifeq ($(V),0)
 	SUPPRESS_CMD := @
+	PIPE := > /dev/null
 endif
 
-# clang/gcc options to generate dependency files
+# Options to generate dependency files
 DEP_FLAGS = -MT $@ -MMD -MP -MF $(OUTPUT_DIRECTORY)/$(OBJ_DIR)/$*.d
 
 # select appropriate linker
@@ -119,87 +108,53 @@ START_TIME := $(shell date +%s%3N)
 # tell make to not print spam on recursive calls
 MAKEFLAGS += --no-print-directory
 
-######################################
-# targets for the user
-
-all: debug release
-re: clean all
-
-debug:
-	$(eval EXECUTE_DEBUG := 1)
-	@+make compile D=1 OUTPUT_DIRECTORY=$(DEBUG_DIR) OUTPUT=$(DEBUG_OUTPUT)
-
-release:
-	$(eval EXECUTE_RELEASE := 1)
-	@+make compile D=0 OUTPUT_DIRECTORY=$(RELEASE_DIR) OUTPUT=$(RELEASE_OUTPUT)
+##################################################
+.PHONY: clean check compile directories
 
 clean:
 	@echo  Removing build artifacts...
-	$(SUPPRESS_CMD)rm -rf $(DEBUG_DIR) $(RELEASE_DIR)
-	$(SUPPRESS_CMD)rm -f *.stackdump
+	$(SUPPRESS_CMD)rm -rf $(OUTPUT_DIRECTORY)
 
-help:
-	@echo $(HELP_MESSAGE)
-
-
-######################################
-# internal targets
-
-# printing for pretty output
-print_start:
-ifneq ($(D),0)
-ifneq ($(D),1)
-	$(error Internal Error. Use 'make help' for usage instructions.)
-endif
-endif
-ifeq ($(D), 1)
-	@echo  '_______Building Debug_______'
-else
-	@echo  '______Building Release______'
+check:
+ifeq ($(EXECUTABLE),)
+	$(error No configuration for BUILD_TYPE '$(BUILD_TYPE)')
 endif
 
-# create obj directory and compile, execute if requested
-compile: $(OUTPUT_DIRECTORY)/$(OUTPUT)
-ifeq ($(D), 1)
-	@diff=$$(($(shell date +%s%3N) - $(START_TIME))); echo 'Debug build completed in '$$(($$diff / 1000))'.'$$(($$diff % 1000))'s'
-else
-	@diff=$$(($(shell date +%s%3N) - $(START_TIME))); echo 'Release build completed in '$$(($$diff / 1000))'.'$$(($$diff % 1000))'s'
-endif
-	@echo
-ifdef RUN_AFTER_BUILD
-ifeq ($(D), 1)
-	@echo '_______Running Debug_______'
-else
-	@echo '______Running Release______'
-endif
-	$(SUPPRESS_CMD)$(OUTPUT_DIRECTORY)/$(OUTPUT)
-endif
+# Create obj directory and compile
+compile: directories $(OUTPUT_DIRECTORY)/$(EXECUTABLE) | check
+	@diff=$$(($(shell date +%s%3N) - $(START_TIME))); echo '$(BUILD_TYPE) build completed in '$$(($$diff / 1000))'.'$$(($$diff % 1000))'s'
 	@echo
 
-# link output
-$(OUTPUT_DIRECTORY)/$(OUTPUT): $(OBJ_FILES)
+# Create the obj directory
+directories: check
+	@echo  '_______Building $(BUILD_TYPE)_______'
+	@mkdir -p $(OUTPUT_DIRECTORY)/$(OBJ_DIR)/
+
+# Link output
+$(OUTPUT_DIRECTORY)/$(EXECUTABLE): $(OBJ_FILES) | check
 	@echo
-ifndef V
-	@echo  -e 'LINK\t$(OUTPUT)'
+ifeq ($(V), 0)
+	@echo  -e 'LINK\t$(EXECUTABLE)'
 endif
-	$(SUPPRESS_CMD)$(LINK) -o $(OUTPUT_DIRECTORY)/$(OUTPUT) $(OBJ_FILES) $(LINK_FLAGS)
+	$(SUPPRESS_CMD)$(LINK) -o $(OUTPUT_DIRECTORY)/$(EXECUTABLE) $(OBJ_FILES) $(LINK_FLAGS) $(PIPE)
 	@echo
 
-# compile C files
-$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: %.c Makefile | print_start
-ifndef V
+# Compile code files
+$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: %.$(C_EXTENSION) Makefile | check
+ifeq ($(V), 0)
 	@echo  -e 'CC\t$<'
 endif
 	@mkdir -p '$(dir $@)'
-	$(SUPPRESS_CMD)$(CC) -c $< -o $@ $(DEP_FLAGS) $(C_FLAGS) $(foreach dir,$(INC_DIRS),-I $(dir))
+	$(SUPPRESS_CMD)$(CC) -c $< -o $@ $(DEP_FLAGS) $(C_FLAGS) $(foreach dir,$(INC_DIRS),-I $(dir)) $(PIPE)
+	@touch $@
 
-# compile C++ files
-$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: %.cpp Makefile | print_start
-ifndef V
+$(OUTPUT_DIRECTORY)/$(OBJ_DIR)/%.o: %.$(CXX_EXTENSION) Makefile | check
+ifeq ($(V), 0)
 	@echo  -e 'CXX\t$<'
 endif
 	@mkdir -p '$(dir $@)'
-	$(SUPPRESS_CMD)$(CXX) -c $< -o $@ $(DEP_FLAGS) $(CXX_FLAGS) $(foreach dir,$(INC_DIRS),-I $(dir))
+	$(SUPPRESS_CMD)$(CXX) -c $< -o $@ $(DEP_FLAGS) $(CXX_FLAGS) $(foreach dir,$(INC_DIRS),-I $(dir)) $(PIPE)
+	@touch $@
 
-#Pull in dependency info for *existing* .o files
+# Pull in dependency info for existing .o files
 -include $(OBJ_FILES:.o=.d)
